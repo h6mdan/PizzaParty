@@ -393,16 +393,11 @@ const App: React.FC = () => {
                     transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
                     className="mb-6 flex flex-col items-center lg:items-start"
                    >
-                     <img 
-                       src="https://raw.githubusercontent.com/NisargBhavsar/MillionCoders-Logo/main/MillionCoders_Logo.png" 
-                       alt="Million Coders Logo"
-                       className="w-40 lg:w-56 h-auto drop-shadow-xl"
-                       onError={(e) => {
-                         e.currentTarget.style.display = 'none';
-                         const fallback = document.getElementById('emoji-fallback');
-                         if(fallback) fallback.style.display = 'block';
-                       }}
-                     />
+                    <img 
+  src="/Million-Coders-White-text.svg"
+  alt="Million Coders Logo"
+  className="w-40 lg:w-56 h-auto drop-shadow-xl"
+/>
                      <div id="emoji-fallback" style={{ display: 'none' }} className="text-8xl mb-4">🍕</div>
                    </motion.div>
 
