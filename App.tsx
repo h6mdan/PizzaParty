@@ -126,7 +126,6 @@ const App: React.FC = () => {
     musicContextRef.current = ctx;
     musicGainRef.current = mainGain;
 
-    // A simple lo-fi beat generator
     const playNote = (freq: number, time: number, duration: number, volume: number) => {
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
@@ -143,16 +142,14 @@ const App: React.FC = () => {
 
     const loop = () => {
       const now = ctx.currentTime;
-      const step = 0.4; // Tempo
-      const scale = [261.63, 311.13, 349.23, 392.00, 466.16]; // C minor pentatonic
+      const step = 0.4;
+      const scale = [261.63, 311.13, 349.23, 392.00, 466.16];
       
-      // Melody
       for (let i = 0; i < 8; i++) {
         const time = now + i * step;
         const freq = scale[Math.floor(Math.random() * scale.length)];
         playNote(freq, time, step * 0.9, 0.4);
         
-        // Soft kick
         const kick = ctx.createOscillator();
         const kickG = ctx.createGain();
         kick.frequency.setValueAtTime(100, time);
@@ -182,6 +179,13 @@ const App: React.FC = () => {
     setGameState('ORDERING');
     setChefTalk("Someone's calling the shop...");
     
+    // Check if API Key exists
+    if (!process.env.API_KEY) {
+      console.error("ERROR: Gemini API Key is missing! Please set 'API_KEY' in your Cloudflare Pages environment variables.");
+      setChefTalk("Missing API Key! Please check Cloudflare settings.");
+      return;
+    }
+
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const varietySeed = Math.random().toString(36).substring(7);
     const timestamp = Date.now();
@@ -235,7 +239,11 @@ const App: React.FC = () => {
         }
       });
 
-      const data = JSON.parse(response.text || "{}");
+      if (!response || !response.text) {
+        throw new Error("Empty response from Gemini API");
+      }
+
+      const data = JSON.parse(response.text.trim());
       setOrder({
         id: Math.random().toString(),
         customer: data.customer || "Hungry Customer",
@@ -245,8 +253,11 @@ const App: React.FC = () => {
       setGameState('COOKING');
       setChefTalk(`Incoming order! Let's get to work!`);
     } catch (e) {
-      setChefTalk("Phone line is fuzzy...");
-      setTimeout(fetchOrder, 2000);
+      console.error("Failed to fetch order:", e);
+      setChefTalk("Phone line is fuzzy... retrying soon.");
+      if (process.env.API_KEY) {
+        setTimeout(fetchOrder, 3000);
+      }
     }
   };
 
@@ -356,7 +367,6 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen w-full text-slate-900 p-4 md:p-6 font-['Fredoka'] overflow-hidden flex flex-col">
-      {/* Global Music Toggle */}
       <button 
         onClick={() => { setIsMuted(!isMuted); playSound('click'); }}
         className="fixed top-8 right-8 z-[200] w-14 h-14 bg-white border-4 border-[#3d251e] rounded-2xl flex items-center justify-center text-2xl shadow-xl hover:scale-110 active:scale-95 transition-all"
@@ -365,8 +375,6 @@ const App: React.FC = () => {
       </button>
 
       <div className="max-w-[1600px] w-full mx-auto h-full min-h-0 relative">
-        
-        {/* Main Menu Screen */}
         <AnimatePresence>
           {gameState === 'MENU' && (
             <motion.div 
@@ -375,59 +383,54 @@ const App: React.FC = () => {
             >
               <motion.div 
                 initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }}
-                className="bg-[#fdf6e3] rounded-[4rem] p-12 max-w-5xl w-full shadow-2xl border-[12px] border-[#3d251e] relative overflow-hidden flex flex-col lg:flex-row gap-12"
+                className="bg-[#fdf6e3] rounded-[3rem] p-8 max-w-4xl w-full shadow-2xl border-8 border-[#3d251e] relative overflow-hidden flex flex-col lg:flex-row gap-8"
               >
-                {/* Checkered Background Accent */}
-                <div className="checkered absolute inset-x-0 top-0 h-10 border-b-8 border-[#3d251e]"></div>
+                <div className="checkered absolute inset-x-0 top-0 h-8 border-b-6 border-[#3d251e]"></div>
                 
-                <div className="flex-1 flex flex-col justify-center items-center lg:items-start">
-                   {/* Logo Container */}
+                <div className="flex-1 flex flex-col justify-center items-center lg:items-start pt-4">
                    <motion.div 
-                    animate={{ y: [0, -10, 0] }} 
+                    animate={{ y: [0, -8, 0] }} 
                     transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                    className="mb-8 flex flex-col items-center lg:items-start"
+                    className="mb-6 flex flex-col items-center lg:items-start"
                    >
                      <img 
                        src="https://raw.githubusercontent.com/NisargBhavsar/MillionCoders-Logo/main/MillionCoders_Logo.png" 
                        alt="Million Coders Logo"
-                       className="w-48 lg:w-64 h-auto drop-shadow-2xl"
+                       className="w-40 lg:w-56 h-auto drop-shadow-xl"
                        onError={(e) => {
-                         // Fallback to emoji if image fails
                          e.currentTarget.style.display = 'none';
                          const fallback = document.getElementById('emoji-fallback');
                          if(fallback) fallback.style.display = 'block';
                        }}
                      />
-                     <div id="emoji-fallback" style={{ display: 'none' }} className="text-9xl mb-6">🍕</div>
+                     <div id="emoji-fallback" style={{ display: 'none' }} className="text-8xl mb-4">🍕</div>
                    </motion.div>
 
-                   <h1 className="text-7xl font-black text-red-600 uppercase italic leading-[0.9] tracking-tighter mb-4 text-center lg:text-left">
+                   <h1 className="text-6xl font-black text-red-600 uppercase italic leading-[0.9] tracking-tighter mb-4 text-center lg:text-left">
                      Pizza <br/>Party!
                    </h1>
-                   <div className="bg-[#3d251e] px-4 py-2 rounded-xl text-white font-black text-sm uppercase tracking-widest mb-8">
+                   <div className="bg-[#3d251e] px-3 py-1.5 rounded-xl text-white font-black text-xs uppercase tracking-widest mb-6">
                      Lesson 4.2: Using Variables
                    </div>
                    
-                   <p className="text-lg text-red-950/70 font-medium mb-8 text-center lg:text-left leading-tight max-w-sm">
+                   <p className="text-base text-red-950/70 font-medium mb-6 text-center lg:text-left leading-tight max-w-sm">
                      Match orders by putting the right <b>Values</b> into your kitchen <b>Variables</b>!
                    </p>
 
-                   {/* Shift Length Selection */}
-                   <div className="mb-10 w-full max-w-sm">
-                     <p className="text-[10px] font-black text-red-900 uppercase tracking-widest mb-3 text-center lg:text-left">Assign Shift Duration (Seconds Variable):</p>
+                   <div className="mb-8 w-full max-w-xs">
+                     <p className="text-[9px] font-black text-red-900 uppercase tracking-widest mb-2 text-center lg:text-left">Assign Shift Duration:</p>
                      <div className="flex gap-2">
                        {TIMER_OPTIONS.map(opt => (
                          <button
                            key={opt.seconds}
                            onClick={() => { setSelectedDuration(opt.seconds); playSound('click'); }}
-                           className={`flex-1 py-3 px-2 rounded-2xl font-black text-xs uppercase transition-all border-4 ${
+                           className={`flex-1 py-2 px-1 rounded-xl font-black text-[10px] uppercase transition-all border-2 ${
                              selectedDuration === opt.seconds 
-                             ? 'bg-red-600 text-white border-red-900 shadow-lg' 
+                             ? 'bg-red-600 text-white border-red-900 shadow-md' 
                              : 'bg-white text-red-900 border-[#3d251e] hover:bg-red-50'
                            }`}
                          >
                            {opt.label}
-                           <span className="block text-[8px] opacity-60 mt-0.5">{opt.seconds}s</span>
                          </button>
                        ))}
                      </div>
@@ -435,7 +438,7 @@ const App: React.FC = () => {
 
                    <button 
                     onClick={startGame}
-                    className="group relative w-full lg:w-64 py-6 bg-red-600 hover:bg-red-500 text-white rounded-[2.5rem] font-black text-3xl uppercase italic border-b-[12px] border-red-900 active:border-b-0 active:translate-y-2 transition-all shadow-2xl overflow-hidden"
+                    className="group relative w-full lg:w-56 py-5 bg-red-600 hover:bg-red-500 text-white rounded-[2rem] font-black text-2xl uppercase italic border-b-[8px] border-red-900 active:border-b-0 active:translate-y-2 transition-all shadow-xl overflow-hidden"
                    >
                       <span className="relative z-10">START SHIFT</span>
                       <motion.div 
@@ -447,25 +450,22 @@ const App: React.FC = () => {
                    </button>
                 </div>
 
-                <div className="w-full lg:w-80 flex flex-col">
-                  <div className="bg-white/80 rounded-[3rem] p-8 border-4 border-[#3d251e] shadow-xl flex-1 flex flex-col">
-                    <h2 className="text-2xl font-black text-[#3d251e] uppercase tracking-tighter mb-6 flex items-center gap-3">
+                <div className="w-full lg:w-72 flex flex-col pt-4">
+                  <div className="bg-white/80 rounded-[2.5rem] p-6 border-4 border-[#3d251e] shadow-lg flex-1 flex flex-col">
+                    <h2 className="text-xl font-black text-[#3d251e] uppercase tracking-tighter mb-4 flex items-center gap-2">
                       <span>🏆</span> Top Chefs
                     </h2>
-                    <div className="space-y-3 flex-1">
+                    <div className="space-y-2 flex-1">
                       {leaderboard.map((entry, i) => (
-                        <div key={i} className={`flex justify-between items-center p-3 rounded-2xl ${i === 0 ? 'bg-yellow-100 border-2 border-yellow-400' : 'bg-white border border-slate-200'}`}>
-                          <div className="flex items-center gap-3">
-                            <span className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs ${i === 0 ? 'bg-yellow-400' : 'bg-slate-200'}`}>{i + 1}</span>
-                            <span className="font-bold text-slate-800 text-sm">{entry.name}</span>
+                        <div key={i} className={`flex justify-between items-center p-2.5 rounded-xl ${i === 0 ? 'bg-yellow-100 border-2 border-yellow-400' : 'bg-white border border-slate-200'}`}>
+                          <div className="flex items-center gap-2">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-[10px] ${i === 0 ? 'bg-yellow-400' : 'bg-slate-200'}`}>{i + 1}</span>
+                            <span className="font-bold text-slate-800 text-[11px]">{entry.name}</span>
                           </div>
-                          <span className="font-black text-red-600">{entry.score}</span>
+                          <span className="font-black text-red-600 text-[12px]">{entry.score}</span>
                         </div>
                       ))}
                     </div>
-                  </div>
-                  <div className="mt-6 p-4 text-center">
-                    <p className="text-[10px] font-black text-[#3d251e]/40 uppercase tracking-widest">A World-Class Coding Game</p>
                   </div>
                 </div>
               </motion.div>
@@ -473,7 +473,6 @@ const App: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Game Over Modal */}
         <AnimatePresence>
           {isGameOver && (
             <motion.div 
@@ -488,15 +487,6 @@ const App: React.FC = () => {
                       <p className="text-emerald-800 font-black text-sm uppercase tracking-widest mb-1">Your Score</p>
                       <p className="text-6xl font-black text-emerald-600 tracking-tighter">{score} PTS</p>
                    </div>
-                  {leaderboard.slice(0, 3).map((entry, i) => (
-                    <div key={i} className={`flex justify-between items-center p-4 rounded-2xl ${i === 0 ? 'bg-yellow-100 border-2 border-yellow-400' : 'bg-white/50 border border-slate-200'}`}>
-                      <div className="flex items-center gap-4">
-                        <span className={`w-8 h-8 rounded-full flex items-center justify-center font-black ${i === 0 ? 'bg-yellow-400' : 'bg-slate-300'}`}>{i + 1}</span>
-                        <span className="font-bold text-slate-800">{entry.name}</span>
-                      </div>
-                      <span className="text-xl font-black text-red-600">{entry.score}</span>
-                    </div>
-                  ))}
                 </div>
                 <div className="flex flex-col gap-3">
                   <button onClick={goToMenu} className="w-full py-5 bg-red-600 hover:bg-red-500 text-white rounded-3xl font-black text-2xl uppercase italic border-b-8 border-red-900 transition-all shadow-xl">New Shift</button>
@@ -507,16 +497,12 @@ const App: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Game Layout */}
         <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 h-full min-h-0 relative ${gameState === 'MENU' ? 'blur-md pointer-events-none' : ''}`}>
-          
-          {/* 1. Sidebar Panel (Left) - Kitchen Controls */}
           <aside className="lg:col-span-3 flex flex-col min-h-0 order-1">
             <motion.div 
               initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
               className="parchment border-8 border-[#3d251e] p-6 rounded-[3rem] shadow-2xl flex flex-col min-h-0 h-full overflow-hidden relative"
             >
-              {/* Red Checkered Header Trim */}
               <div className="checkered h-6 absolute top-0 left-0 right-0 border-b-4 border-[#3d251e]"></div>
               
               <header className="flex items-center justify-between mb-6 mt-6 shrink-0 bg-red-600 p-4 rounded-2xl border-4 border-[#3d251e] shadow-lg">
@@ -524,7 +510,6 @@ const App: React.FC = () => {
                   <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-2xl shadow-inner border-2 border-red-800">👨‍🍳</div>
                   <div>
                     <h1 className="text-lg font-black text-white leading-none uppercase tracking-tighter">RECIPE BOX</h1>
-                    <span className="text-[8px] font-bold text-red-200 uppercase tracking-widest block mt-0.5 italic">Variable Input</span>
                   </div>
                 </div>
                 <div className={`px-3 py-1.5 rounded-xl border-4 flex flex-col items-center shadow-inner ${timeLeft < 10 ? 'bg-yellow-400 border-yellow-600 animate-pulse' : 'bg-white border-red-800'}`}>
@@ -547,7 +532,7 @@ const App: React.FC = () => {
                     {TOPPINGS.map(t => (
                       <button
                         key={t} onClick={() => toggleTopping(t)}
-                        className={`py-2.5 rounded-xl text-[10px] font-black uppercase transition-all shadow-md border-2 border-[#3d251e] ${pizza.toppings.includes(t) ? 'bg-red-600 text-white shadow-[0_4px_0_#450a0a]' : 'bg-white text-slate-500 hover:bg-red-50 active:translate-y-1'}`}
+                        className={`py-2.5 rounded-xl text-[10px] font-black uppercase transition-all shadow-md border-2 border-[#3d251e] ${pizza.toppings.includes(t) ? 'bg-red-600 text-white' : 'bg-white text-slate-500'}`}
                       >
                         {t}
                       </button>
@@ -557,32 +542,19 @@ const App: React.FC = () => {
 
                 <PizzaControl label="sauce_type" type="select" value={pizza.sauce} options={SAUCES} icon="🍅" onChange={(val) => handleVariableChange('sauce', val)} />
                 <PizzaControl label="extra_cheese" type="toggle" value={pizza.extraCheese} icon="🧀" onChange={(val) => handleVariableChange('extraCheese', val)} />
-                
-                <div className="mt-4 pt-4 border-t-4 border-dashed border-[#3d251e]/20">
-                  <div className="bg-white/60 rounded-2xl p-4 font-mono text-[10px] text-red-900 border-2 border-[#3d251e] shadow-inner">
-                    <p className="mb-1 text-[8px] font-black uppercase tracking-widest text-red-400">Memory Preview</p>
-                    <p className="font-bold">let base = <span className="text-blue-600">{pizza.baseType ? `"${pizza.baseType}"` : "null"}</span>;</p>
-                    <p className="font-bold">let size = <span className="text-blue-600">{pizza.size ? `"${pizza.size}"` : "null"}</span>;</p>
-                  </div>
-                </div>
               </div>
 
               <button 
                 onClick={handleServe} disabled={gameState !== 'COOKING' || isGameOver}
-                className="w-full py-5 rounded-3xl bg-red-600 hover:bg-red-500 text-white font-black text-2xl uppercase italic border-b-8 border-red-900 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-20 shadow-2xl shrink-0 border-x-2 border-t-2 border-red-400"
+                className="w-full py-5 rounded-3xl bg-red-600 hover:bg-red-500 text-white font-black text-2xl uppercase italic border-b-8 border-red-900 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-20 shadow-2xl shrink-0"
               >
                 SERVE IT! 🍕
               </button>
             </motion.div>
           </aside>
 
-          {/* 2. Pizza Stage (Middle) - The Prep Table */}
           <main className="lg:col-span-6 flex flex-col gap-6 min-h-0 order-2">
             <div className="flex-1 relative min-h-0 bg-white border-[16px] border-[#3d251e] rounded-[4rem] shadow-2xl overflow-hidden group">
-               {/* Counter Top Look */}
-               <div className="absolute inset-0 bg-slate-100 opacity-20" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, black 1px, transparent 0)', backgroundSize: '24px 24px'}}></div>
-               
-               {/* Score Overlay */}
                <div className="absolute top-8 left-8 z-30">
                   <motion.div 
                     initial={{ scale: 0 }} animate={{ scale: 1 }}
@@ -593,12 +565,11 @@ const App: React.FC = () => {
                   </motion.div>
                </div>
 
-               {/* Feedback Overlay */}
                <div className="absolute top-8 right-8 z-30 max-w-[240px]">
                   <AnimatePresence mode="wait">
                     <motion.div 
                       key={chefTalk} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
-                      className={`px-6 py-4 rounded-3xl border-4 shadow-2xl text-white font-black uppercase text-xs italic text-center leading-tight ${chefTalk.includes('Mamma') || chefTalk.includes('fuzzy') ? 'bg-red-600 border-red-900' : 'bg-emerald-600 border-emerald-900'}`}
+                      className={`px-6 py-4 rounded-3xl border-4 shadow-2xl text-white font-black uppercase text-xs italic text-center leading-tight ${chefTalk.includes('Mamma') || chefTalk.includes('fuzzy') || chefTalk.includes('Missing') ? 'bg-red-600 border-red-900' : 'bg-emerald-600 border-emerald-900'}`}
                     >
                       {chefTalk}
                     </motion.div>
@@ -619,13 +590,11 @@ const App: React.FC = () => {
             </div>
           </main>
 
-          {/* 3. Request Panel (Right) - The Customer Ticket */}
           <aside className="lg:col-span-3 flex flex-col gap-6 min-h-0 order-3">
             <motion.div 
               initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
               className="bg-[#fdf6e3] border-8 border-[#3d251e] p-6 rounded-[3rem] shadow-2xl flex flex-col min-h-0 h-full relative overflow-hidden parchment"
             >
-              {/* Ticket Hook UI */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-8 bg-[#3d251e] rounded-b-2xl shadow-lg flex items-center justify-center">
                 <div className="w-12 h-1 bg-white/20 rounded-full"></div>
               </div>
@@ -635,7 +604,6 @@ const App: React.FC = () => {
                    <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center text-2xl shadow-lg border-2 border-red-800">📋</div>
                    <h2 className="text-xl font-black text-red-900 tracking-tighter uppercase leading-none">THE ORDER</h2>
                  </div>
-                 <p className="text-[9px] font-bold text-red-400 uppercase tracking-widest italic">KITCHEN TICKET #402</p>
               </header>
 
               <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
@@ -652,12 +620,10 @@ const App: React.FC = () => {
                     <div>
                       <h3 className="text-[10px] font-black uppercase text-red-400 tracking-[0.1em] mb-2">{order?.customer} says:</h3>
                       <p className="text-lg font-black text-red-900 italic leading-snug bg-white/50 p-5 rounded-3xl border-2 border-[#3d251e] shadow-inner relative">
-                        <span className="absolute -top-3 -left-2 text-4xl opacity-20">"</span>
                         {order?.message}
                       </p>
                     </div>
 
-                    {/* Target Values Ticket */}
                     <div className="bg-[#fef3c7] border-4 border-[#3d251e] rounded-[2rem] p-5 shadow-lg relative">
                       <div className="flex items-center gap-2 mb-4 border-b-2 border-[#3d251e]/20 pb-2">
                         <span className="text-sm">📝</span>
@@ -683,7 +649,7 @@ const App: React.FC = () => {
                               <span key={t} className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-1 rounded-lg uppercase border-b-4 border-emerald-900">
                                 {t}
                               </span>
-                            )) : <span className="text-[11px] font-bold text-slate-300 italic">[] (Empty Array)</span>}
+                            )) : <span className="text-[11px] font-bold text-slate-300 italic">[]</span>}
                           </div>
                         </div>
 
@@ -704,13 +670,8 @@ const App: React.FC = () => {
                   </div>
                 )}
               </div>
-              
-              <div className="mt-4 pt-4 border-t-4 border-dashed border-[#3d251e]/30 shrink-0 text-center">
-                 <p className="text-[9px] font-black text-[#3d251e]/40 uppercase tracking-[0.2em]">Authentic Coding Kitchen v2.0</p>
-              </div>
             </motion.div>
           </aside>
-
         </div>
       </div>
     </div>
