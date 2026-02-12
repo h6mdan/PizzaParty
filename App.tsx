@@ -396,7 +396,7 @@ const App: React.FC = () => {
                     <img 
   src="/Million-Coders-White-text.svg"
   alt="Million Coders Logo"
-  className="w-40 lg:w-56 h-auto drop-shadow-xl"
+  className="w-20 h-auto"
 />
                      <div id="emoji-fallback" style={{ display: 'none' }} className="text-8xl mb-4">🍕</div>
                    </motion.div>
